@@ -129,7 +129,7 @@ test('unlisted dependencies, recursive graphs, cycles and missing handlers fail 
   manager.stage(graph(),handlers(x=>x));
   manager.activate('r1',{expectedActive:null});
   await assert.rejects(()=>manager.invoke('top','wrong type'),/Invalid typed input/);
-  await assert.rejects(()=>manager.invoke('top',3,{output:'missing'}),/Invalid typed input/);
+  await assert.rejects(()=>manager.invoke('top',3,{output:'missing'}),/Public graph entry port contract mismatch/);
   await assert.rejects(()=>manager.invoke('nested',3),/not executable/);
 });
 
@@ -146,8 +146,10 @@ test('handler may invoke only declared graph edges, and output type is checked',
 
 test('same revision cannot be reused to silently replace a staged immutable graph',()=>{
   const manager=new GraphManager();
-  manager.stage(graph(),handlers(x=>x));
-  assert.equal(manager.stage(graph(),handlers(x=>x)).status,'already-staged');
+  const fn=x=>x;
+  manager.stage(graph(),handlers(fn));
+  assert.equal(manager.stage(graph(),handlers(fn)).status,'already-staged');
+  assert.throws(()=>manager.stage(graph(),handlers(x=>x)),/different trusted handler bindings/);
   const changed=graph();changed.graphs[0].nodes[0].label='different';
   assert.throws(()=>manager.stage(changed,handlers(x=>x)),/different graph content/);
 });
@@ -205,4 +207,20 @@ test('CLI graph-ir exports immutable private JSON from accepted live revision',(
     assert.equal(spawnSync(process.execPath,[binary,'graph-ir',f.state,target]).status,1);
     if(process.platform!=='win32')assert.equal(fs.statSync(target).mode&0o777,0o600);
   }finally{cleanup(f);}
+});
+
+
+test('unexported internal node is only callable via its declared local connection',async()=>{
+  const ir=graph();
+  ir.graphs[0].nodes.push({id:'internal',definition:'worker@1'});
+  ir.graphs[0].connections.push({
+    from:{node:'top',port:'output'},to:{node:'internal',port:'input'}
+  });
+  const manager=new GraphManager();
+  manager.stage(ir,handlers((x,{nodeId,invoke})=>
+    nodeId==='top'?invoke('internal',x+1):x*3
+  ));
+  manager.activate('r1',{expectedActive:null});
+  assert.equal(await manager.invoke('top',2),9);
+  await assert.rejects(()=>manager.invoke('internal',2),/not publicly exported/);
 });
