@@ -1,5 +1,42 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v1.4 — runnable Graph Manager node and typed agent API for Adamantium-node
+
+The published package now registers a real Node-RED palette node **tinner graph manager** (`tinner-graph-runtime`) which hosts an independent in-process Graph Manager. A flow can send typed command messages to its input and receive results on its output **without redeploying all Node-RED flows when switching a graph revision**. The actual Node-RED runtime integration has a separately registered node; it does not patch Node-RED core.
+
+### Reusable, trusted microprograms
+
+The bundled CPU-first allowlist contains six pure handlers: `mechanicus.identity`, `mechanicus.math.offset`, `mechanicus.math.scale`, `mechanicus.text.prefix`, `mechanicus.json.pick`, and `mechanicus.flow.chain`. Definitions are separate from graph instances, and instance-specific parameters such as `offset` or `factor` are immutable per staged revision. The `flow.chain` microprogram can call at most 16 explicitly named targets using only declared, type-checked outgoing graph edges. All other non-catalog executables (including source chunks, Godot scripts, JavaScript pasted into graph JSON and auto-exported file-reference nodes) are rejected or remain inert.
+
+A ready-to-edit nested sample is in `examples/graph-runtime-chain.json`. It computes `(10 + 3) * 2 = 26` using three reusable definitions and four graph instances (including the nested container). The graph is not executable until explicitly staged and activated.
+
+### Node-RED flow messages
+
+Create a **tinner graph manager** node and enable its **Management** setting to allow stage, activation, rollback and eviction. This permission is **off by default**. Feed it `msg.tinnerGraph` commands; for invocation, `msg.payload` contains the typed input.
+
+```js
+// A user-approved internal control flow (Management enabled):
+msg.tinnerGraph={action:'stage',graph:ir}; // ir = parsed sample JSON
+// Then send another message:
+msg.tinnerGraph={action:'activate',revision:'example-r1',expectedActive:null};
+// Invoke:
+msg.tinnerGraph={action:'invoke',route:'pipeline/sequence'};
+msg.payload=10;
+// Output msg.payload is 26; msg.tinnerGraphResult includes the revision.
+```
+
+### Agent-first Node-RED Admin API
+
+When the runtime exposes the official `RED.httpAdmin` and `RED.auth.needsPermission`, the node adds three scoped, authenticated endpoints, keyed by the node's instance ID:
+
+- `GET /tinner/graph/:id/status` requires `flows.read`.
+- `GET /tinner/graph/:id/catalog` requires `flows.read`.
+- `POST /tinner/graph/:id/command` requires `flows.write` and accepts the same command envelope, including an optional `payload` for invocation.
+
+There is **no unauthenticated admin API fallback**. If Node-RED's permission middleware is absent, the routes are not registered. A write requires the graph manager node's explicit Management configuration and an exact `expectedActive` compare-and-swap for activation/rollback. No automatic rollback, retries of ambiguous writes, or remote code evaluation.
+
+**Boundaries:** graph revisions and handlers are **memory-only**, so a Node-RED restart requires re-staging the desired graph. The adapter is not a cross-process state migration, distributed consensus, or a live replacement of Node-RED core flow definitions. It cannot execute a graph exported from Godot source until approved executable handlers are explicitly authored and registered. The CI unit suite exercises the Node-RED registration and authenticated route wiring with a simulated host, not a production Adamantium-node deployment.
+
 ## v1.3 — CPU-first native Graph Manager R01
 
 Tinner can now generate the first version of **mechanicus.universal-graph/1** directly from any accepted, checksum-verified Tinner Live revision. This format is **independent of Node-RED, Node.js runtime APIs, and file-system navigation semantics**: it is a JSON graph representation that a native/non-JS host can consume. The *reference implementation of the Graph Manager is currently a JavaScript library*, not a compiled native C++ or Rust runtime.

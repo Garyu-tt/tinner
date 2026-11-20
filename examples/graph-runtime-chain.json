@@ -1,0 +1,134 @@
+{
+  "format": "mechanicus.universal-graph/1",
+  "namespace": "example.graph-runtime",
+  "revision": "example-r1",
+  "root": "main",
+  "definitions": [
+    {
+      "id": "mechanicus.flow.chain",
+      "version": 1,
+      "kind": "handler",
+      "inputs": [
+        {
+          "name": "input",
+          "type": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "id": "mechanicus.math.offset",
+      "version": 1,
+      "kind": "handler",
+      "inputs": [
+        {
+          "name": "input",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "id": "mechanicus.math.scale",
+      "version": 1,
+      "kind": "handler",
+      "inputs": [
+        {
+          "name": "input",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "number"
+        }
+      ]
+    }
+  ],
+  "graphs": [
+    {
+      "id": "main",
+      "inputs": [],
+      "outputs": [],
+      "nodes": [
+        {
+          "id": "pipeline",
+          "graphRef": "child"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "id": "child",
+      "inputs": [],
+      "outputs": [],
+      "nodes": [
+        {
+          "id": "sequence",
+          "definition": "mechanicus.flow.chain@1",
+          "params": {
+            "steps": [
+              "offset",
+              "scale"
+            ]
+          }
+        },
+        {
+          "id": "offset",
+          "definition": "mechanicus.math.offset@1",
+          "params": {
+            "offset": 3
+          }
+        },
+        {
+          "id": "scale",
+          "definition": "mechanicus.math.scale@1",
+          "params": {
+            "factor": 2
+          }
+        }
+      ],
+      "connections": [
+        {
+          "from": {
+            "node": "sequence",
+            "port": "output"
+          },
+          "to": {
+            "node": "offset",
+            "port": "input"
+          }
+        },
+        {
+          "from": {
+            "node": "sequence",
+            "port": "output"
+          },
+          "to": {
+            "node": "scale",
+            "port": "input"
+          }
+        }
+      ]
+    }
+  ],
+  "dependencies": [],
+  "exports": [
+    {
+      "path": "pipeline/sequence",
+      "input": "input",
+      "output": "output"
+    }
+  ]
+}

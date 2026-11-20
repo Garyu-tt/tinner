@@ -1,0 +1,42 @@
+<script type="text/javascript">
+RED.nodes.registerType('tinner-graph-runtime',{
+ category:'function',
+ defaults:{
+  name:{value:''},
+  allowManagement:{value:false}
+ },
+ inputs:1,outputs:1,
+ icon:'font-awesome/fa-sitemap',
+ label:function(){return this.name||'graph manager';},
+ paletteLabel:'tinner graph manager'
+});
+</script>
+<script type="text/html" data-template-name="tinner-graph-runtime">
+ <div class="form-row">
+  <label for="node-input-name">Name</label>
+  <input type="text" id="node-input-name">
+ </div>
+ <div class="form-row">
+  <label for="node-input-allowManagement">Management</label>
+  <input type="checkbox" id="node-input-allowManagement" style="width:auto;vertical-align:middle">
+  <span>Allow staged changes (stage, activate, rollback, evict)</span>
+ </div>
+ <p>Management is disabled by default. Only approved built-in pure microprograms execute; no source text or graph JSON is evaluated.</p>
+</script>
+<script type="text/html" data-help-name="tinner-graph-runtime">
+ <p>In-process typed Graph Manager for Adamantium-node / Node-RED. Nestable graph IR, revision CAS and in-flight safe activation.</p>
+ <p>Use <code>msg.tinnerGraph</code> for the command and <code>msg.payload</code> for invocation input. The result is returned in <code>msg.tinnerGraphResult</code>. The <code>invoke</code> action replaces the payload with the result.</p>
+ <pre>msg.tinnerGraph = {action:"status"};
+msg.tinnerGraph = {action:"catalog"};
+msg.tinnerGraph = {action:"stage",graph:ir};
+msg.tinnerGraph = {action:"activate",revision:"r2",expectedActive:"r1"};
+msg.tinnerGraph = {action:"invoke",route:"container/worker"};
+msg.tinnerGraph = {action:"rollback",expectedActive:"r2"};</pre>
+ <p>Control messages require the node's explicit Management checkbox. The <code>stage</code> action accepts only trusted built-in implementations registered by Tinner. File-reference nodes generated from Godot source are inert and cannot be invoked.</p>
+ <p>Authenticated native API (subject to Node-RED flows.read / flows.write permissions):
+  <code>GET /tinner/graph/:id/status</code>,
+  <code>GET /tinner/graph/:id/catalog</code>,
+  <code>POST /tinner/graph/:id/command</code>.
+ </p>
+ <p>Runtime versions live in process memory only and must be re-staged after a restart. This is not Node-RED core hot swapping, state migration or distributed execution.</p>
+</script>
