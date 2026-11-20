@@ -169,3 +169,46 @@ test('baseline API fails closed on mismatched limits and disallowed cache policy
     assert.equal(fs.existsSync(path.join(f.root,'bad3')),false);
   }finally{cleanup(f);}
 });
+
+test('legacy bundles without cached analysis safely reprocess old source files',()=>{
+  const f=fixture();
+  try {
+    const old=path.join(f.root,'legacy');
+    exportProject(f.src,old);
+    const manifest=load(old);
+    for(const entry of manifest.files) {
+      delete entry.references;
+      delete entry.symbolIndexEntry;
+    }
+    fs.writeFileSync(path.join(old,'project-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+    const next=path.join(f.root,'next');
+    const updated=exportProject(f.src,next,{
+      baselineBundle:old,changedPaths:['icon.bin']
+    });
+    // v0.6 archives have no source metadata cache; never invent it.
+    assert.equal(updated.manifest.incremental.reusedFiles,0);
+    assert.equal(updated.manifest.incremental.processedFiles,4);
+    assert.equal(verifyProject(next).verified,4);
+  }finally{cleanup(f);}
+});
+
+test('unchanged C++ include is re-resolved when engine header appears',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tinner-engine-incr-'));
+  try{
+    const source=path.join(root,'engine'),base=path.join(root,'base'),newBundle=path.join(root,'new');
+    fs.mkdirSync(path.join(source,'core'),{recursive:true});
+    fs.mkdirSync(path.join(source,'scene'),{recursive:true});
+    fs.writeFileSync(path.join(source,'SConstruct'),'env = Environment()\n');
+    fs.writeFileSync(path.join(source,'scene','node.cpp'),'#include "core/some_header.h"\nvoid Node::step(int n) { helper(n); }\n');
+    const first=exportProject(source,base);
+    assert.ok(first.manifest.files.find(x=>x.path==='scene/node.cpp').unresolved.includes('core/some_header.h'));
+    fs.writeFileSync(path.join(source,'core','some_header.h'),'#pragma once\nvoid helper(int n);\n');
+    const next=exportProject(source,newBundle,{baselineBundle:base,changedPaths:['core/some_header.h']});
+    assert.equal(next.manifest.incremental.reusedFiles,2);
+    assert.equal(next.manifest.incremental.processedFiles,1);
+    const cpp=next.manifest.files.find(x=>x.path==='scene/node.cpp');
+    assert.deepEqual(cpp.dependencies,['core/some_header.h']);
+    assert.ok(!cpp.unresolved.includes('core/some_header.h'));
+    assert.equal(verifyProject(newBundle).verified,3);
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
