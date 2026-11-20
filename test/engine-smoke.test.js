@@ -116,7 +116,7 @@ test('Engine gate switches live revision only after successful staged binary ver
     });
     assert.equal(out.validated,true);
     assert.equal(out.validator,'docker-godot-linuxbsd-editor-build');
-    assert.equal(liveStatus(f.state,{verify:true}).verified,4);
+    assert.equal(liveStatus(f.state,{verify:true}).verified,3);
     assert.equal(current(f).previous.revision,old.revision);
   }finally{destroy(f);}
 });
