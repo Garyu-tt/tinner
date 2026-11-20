@@ -26,6 +26,14 @@ RED.nodes.registerType('tinner-project-module',{
  label:function(){return this.name||this.relativePath||'tinner module';},
  paletteLabel:'tinner project module'
 });
+RED.nodes.registerType('tinner-symbol',{
+ category:'function', defaults:{
+  name:{value:''},relativePath:{value:''},signature:{value:''},language:{value:''},
+  lineStart:{value:0},lineEnd:{value:0},confidence:{value:''},
+  ports:{value:'{"inputs":[],"outputs":[]}'}
+ },inputs:1,outputs:1,icon:'font-awesome/fa-code',
+ label:function(){return this.name||'tinner symbol';},paletteLabel:'tinner symbol'
+});
 </script>
 <script type="text/html" data-template-name="tinner">
  <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
@@ -56,3 +64,15 @@ RED.nodes.registerType('tinner-project-module',{
  <div class="form-row"><label for="node-input-dependencyList">Dependencies</label><textarea id="node-input-dependencyList" rows="7" readonly style="width:100%;font-family:monospace"></textarea></div>
 </script>
 <script type="text/html" data-help-name="tinner-project-module"><p>Static Godot project dependency metadata. Connection wires visualize file references, but are deliberately inert. This node never executes or forwards code.</p></script>
+
+<script type="text/html" data-template-name="tinner-symbol">
+ <div class="form-row"><label for="node-input-name">Symbol</label><input type="text" id="node-input-name" readonly></div>
+ <div class="form-row"><label for="node-input-relativePath">Source path</label><input type="text" id="node-input-relativePath" readonly></div>
+ <div class="form-row"><label for="node-input-signature">Signature</label><textarea rows="5" id="node-input-signature" readonly style="width:100%;font-family:monospace"></textarea></div>
+ <div class="form-row"><label for="node-input-language">Language</label><input type="text" id="node-input-language" readonly></div>
+ <div class="form-row"><label for="node-input-lineStart">Start line</label><input type="number" id="node-input-lineStart" readonly></div>
+ <div class="form-row"><label for="node-input-lineEnd">End line</label><input type="number" id="node-input-lineEnd" readonly></div>
+ <div class="form-row"><label for="node-input-confidence">Confidence</label><input type="text" id="node-input-confidence" readonly></div>
+ <div class="form-row"><label for="node-input-ports">Typed ports metadata</label><textarea rows="7" id="node-input-ports" readonly style="width:100%;font-family:monospace"></textarea></div>
+</script>
+<script type="text/html" data-help-name="tinner-symbol"><p>Inert symbol-index node. Typed inputs/outputs are metadata, not Node-RED runtime port types. Edges are heuristic call references. This node intentionally never executes code or forwards messages.</p></script>
