@@ -49,7 +49,9 @@ test('Oversized single function gets capped, with explicit line-limit warning me
 test('AST cuts do not split two statements occurring on one line', () => {
   const source='let a=1;let b=2;\n'+fn('next',5)+'let c=3;\n';
   const r=splitSource(source,{filename:'sample.mjs',maxLines:3});
-  assert.equal(r.chunks[0].splitReason,'line-limit');
+  assert.equal(r.chunks[0].lineCount,1);
+  assert.equal(r.chunks[0].source,'let a=1;let b=2;\n');
+  assert.equal(r.chunks[0].splitReason,'top-level-statement');
   assert.equal(joinSource(r.manifest,r.chunks),source);
 });
 
