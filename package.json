@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-tinner",
-  "version": "0.6.0",
-  "description": "AI-free Godot structural graph + immutable verified live project revisions for Adamantium-node",
+  "version": "0.7.0",
+  "description": "AI-free Godot graph with per-file incremental revision reuse and verified recovery",
   "license": "UNLICENSED",
   "main": "lib/tinner.js",
   "bin": {
