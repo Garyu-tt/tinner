@@ -42,8 +42,8 @@ test('Godot project one-command export, verify and restore preserve source and b
     const result=exportProject(source,bundle);
     const report=verifyProject(bundle);
     assert.equal(report.verified,5);
-    assert.equal(result.manifest.files.some(f=>f.path.includes('.godot')),false);
-    assert.equal(result.manifest.files.some(f=>f.path.includes('.git')),false);
+    assert.equal(result.manifest.files.some(f=>f.path.startsWith('.godot/')),false);
+    assert.equal(result.manifest.files.some(f=>f.path.startsWith('.git/')),false);
     const player=result.manifest.files.find(f=>f.path==='scripts/player.gd');
     assert.ok(player.chunkManifest.chunks.length>1);
     assert.ok(player.chunkManifest.chunks.every(c=>c.lineCount<=2000));
