@@ -50,7 +50,7 @@ test('one changed script reprocesses only that file and reuses unchanged assets'
     assert.deepEqual(fs.readFileSync(path.join(restored,'icon.bin')),
       fs.readFileSync(path.join(f.src,'icon.bin')));
     // Cached semantic graph for unchanged source must be byte-identical.
-    assert.deepEqual(fs.readFileSync(path.join(newBundle,'flows','scenes','player.tscn.json').replace('flows','chunks').replace('player.tscn.json','player.tscn/part-0001.txt')),
+    assert.deepEqual(fs.readFileSync(path.join(newBundle,'chunks','scenes','player.tscn','part-0001.txt')),
       fs.readFileSync(path.join(rev(f,first.revision),'chunks','scenes','player.tscn','part-0001.txt')));
   }finally{cleanup(f);}
 });
