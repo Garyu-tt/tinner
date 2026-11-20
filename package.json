@@ -1,0 +1,29 @@
+{
+  "name": "node-red-contrib-tinner",
+  "version": "0.1.0",
+  "description": "Lossless source slicer and code-node graph generator for Adamantium-node / Node-RED",
+  "license": "UNLICENSED",
+  "main": "lib/tinner.js",
+  "bin": {
+    "tinner": "bin/tinner.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check lib/tinner.js && node --check nodes/tinner.js && node --check bin/tinner.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "node-red",
+    "adamantium-node",
+    "graph",
+    "splitter"
+  ],
+  "node-red": {
+    "nodes": {
+      "tinner": "nodes/tinner.js"
+    }
+  },
+  "private": true
+}
