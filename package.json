@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-tinner",
-  "version": "1.0.0",
-  "description": "AI-free Godot graph pipeline with isolated game-scene smoke checks and Engine SCons build gates",
+  "version": "1.1.0",
+  "description": "AI-free Godot graph pipeline with real Godot 4 smoke CI and marker-gated Docker acceptance",
   "license": "UNLICENSED",
   "main": "lib/tinner.js",
   "bin": {
