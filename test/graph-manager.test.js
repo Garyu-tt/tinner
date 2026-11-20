@@ -148,7 +148,7 @@ test('same revision cannot be reused to silently replace a staged immutable grap
   const manager=new GraphManager();
   manager.stage(graph(),handlers(x=>x));
   assert.equal(manager.stage(graph(),handlers(x=>x)).status,'already-staged');
-  const changed=graph();changed.graphs[0].nodes[0].id='different';
+  const changed=graph();changed.graphs[0].nodes[0].label='different';
   assert.throws(()=>manager.stage(changed,handlers(x=>x)),/different graph content/);
 });
 
