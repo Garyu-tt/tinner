@@ -77,7 +77,7 @@ async function http(route,req={}){
 test('catalog publishes fixed typed microprograms without dynamic code evaluation',async()=>{
   const runtime=new GraphRuntime();
   const result=await runtime.dispatch({action:'catalog'});
-  assert.equal(result.definitions.length,5);
+  assert.equal(result.definitions.length,6);
   assert.deepEqual(result.definitions,catalog());
   assert.equal(result.definitions.some(d=>d.id==='mechanicus.math.offset'),true);
   assert.equal(result.definitions.some(d=>Object.hasOwn(d,'run')),false);
@@ -180,7 +180,7 @@ test('Node-RED HTTP API registers permissions and allows typed authenticated com
   assert.equal(status.statusCode,200);
   assert.equal(status.body.active,null);
   const catalogResponse=await http(installed.routes.get('GET /tinner/graph/:id/catalog'));
-  assert.equal(catalogResponse.body.definitions.length,5);
+  assert.equal(catalogResponse.body.definitions.length,6);
   const stage=await http(installed.routes.get('POST /tinner/graph/:id/command'),
     {body:{action:'stage',graph:ir()}});
   assert.equal(stage.statusCode,200);
