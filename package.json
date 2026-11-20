@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-tinner",
-  "version": "1.1.0",
-  "description": "AI-free Godot graph pipeline with real Godot 4 smoke CI and marker-gated Docker acceptance",
+  "version": "1.2.0",
+  "description": "AI-free Godot graph pipeline with revision-CAS handoff to Adamantium-node",
   "license": "UNLICENSED",
   "main": "lib/tinner.js",
   "bin": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check lib/gdscript.js && node --check lib/project.js && node --check nodes/tinner.js && node --check bin/tinner.js && node --check lib/symbols.js && node --check lib/live.js && node --check lib/fingerprint.js && node --check lib/godot-validator.js && node --check lib/godot-engine-validator.js"
+    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check lib/gdscript.js && node --check lib/project.js && node --check nodes/tinner.js && node --check bin/tinner.js && node --check lib/symbols.js && node --check lib/live.js && node --check lib/fingerprint.js && node --check lib/godot-validator.js && node --check lib/godot-engine-validator.js && node --check lib/adamantium-handoff.js"
   },
   "engines": {
     "node": ">=18"

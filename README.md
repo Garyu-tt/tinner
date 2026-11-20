@@ -1,5 +1,27 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v1.2 — acceptance-gated handoff to Adamantium-node / Node-RED API v2
+
+Tinner v1.2 reads a **published, checksum-verified** Tinner Live revision and safely prepares its *read-only file/dependency graph* for the official Node-RED API v2 (`Node-RED-API-Version: v2`). This uses the actual `GET /flows` and revision-guarded `POST /flows` routes verified in the Adamantium-node fork. It is NOT a native executable graph migration.
+
+The remote API must be operator-authorized and reachable via HTTPS, or **loopback** HTTP. Supply the optional bearer credential through `TINNER_NODE_RED_TOKEN` in the process environment, not in command arguments or URLs. Install and register the `node-red-contrib-tinner` package on the Node-RED runtime beforehand: imported nodes have type `tinner-project-module`, which intentionally never executes or forwards a message.
+
+```sh
+# Preview only: reads remote /flows v2; NO changes are submitted.
+tinner handoff ./tinner-live https://your-node-red.example
+
+# After reviewing the returned remoteRevision and target, explicitly approve:
+tinner handoff ./tinner-live https://your-node-red.example   --apply --expect-rev=REMOTE_REV --backup-dir=./private-flow-backups
+```
+
+The imported graph lives in a **disabled tab** with explicit `tinnerManaged` and project namespace markers, so it is a structural reference, not a running application. The merge leaves all unrelated tabs/nodes intact. It replaces only a previously managed tab whose ownership markers match; collisions with other users' node IDs, unexpected nodes inside the managed tab, or foreign wires targeting it fail closed. A remote API revision mismatch returns HTTP 409 and is never retried automatically.
+
+**Writes require both** `--apply` and `--expect-rev=...` matching the live server's v2 revision, and a local `--backup-dir`. The pre-write backup contains the full *visible* remote flows and is written as a private (0600) JSON file before the POST. Avoid storing it in a world-readable or cloud-synced folder; Node-RED API v2 does not expose secret credentials, so this is **not a complete credential backup**. Full backups of Node-RED userDir, credential secrets and context remain an operator responsibility.
+
+**Important:** Node-RED's v2 compare-and-swap protects against other writes to the same revision but **does not make flow deployment atomic with runtime start**. Even a deployment type of `nodes` may restart affected node instances. Tinner deliberately does not auto-rollback or retry any uncertain POST response; inspect the server and use the saved backup before making further changes. No server was contacted, modified, or deployed as part of the Tinner unit tests: tests use an injected mock HTTP transport.
+
+This stage imports only `project-flow.json` — not the whole executable source, per-file symbol-flow tabs, private node implementations or credentials. Real-time hot swapping and native Universal Graph IR dispatch still require the future Graph Manager acceptance protocol.
+
 ## v1.1 — real Godot 4.5.1 integration CI and smoke proof
 
 This release adds a **real engine** verification job on GitHub Actions for a repository-owned, minimal Godot 4.5.1 game fixture (no user or private project files). The CI runner retrieves the official `Godot_v4.5.1-stable_linux.x86_64.zip` editor, verifies the pinned SHA-256 `02ec53d1cc7dbb9cc6355393c61b9ab43d1244751a124f10248a4802830788cd`, builds a temporary local container, and invokes **the actual Tinner CLI** with Docker-isolated Godot import and scene smoke execution.
