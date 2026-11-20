@@ -43,4 +43,11 @@ module.exports=function(RED) {
   RED.nodes.registerType('tinner',Split);
   RED.nodes.registerType('tinner-chunk',Chunk);
   RED.nodes.registerType('tinner-join',Join);
+  function ProjectModule(config) {
+    RED.nodes.createNode(this,config);
+    // Structural metadata only. Even a cyclic dependency graph must never
+    // execute scripts or propagate messages along dependency edges.
+    this.on('input',(_msg,_send,done)=>{ if(done)done(); });
+  }
+  RED.nodes.registerType('tinner-project-module',ProjectModule);
 };

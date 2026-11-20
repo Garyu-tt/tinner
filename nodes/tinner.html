@@ -19,6 +19,13 @@ RED.nodes.registerType('tinner-join',{
  inputs:1,outputs:1,icon:'font-awesome/fa-check-circle',
  label:function(){return this.name||'tinner verify';},paletteLabel:'tinner verify'
 });
+RED.nodes.registerType('tinner-project-module',{
+ category:'function',
+ defaults:{name:{value:''},relativePath:{value:''},kind:{value:''},sha256:{value:''},dependencyList:{value:'[]'}},
+ inputs:1,outputs:1,icon:'font-awesome/fa-cubes',
+ label:function(){return this.name||this.relativePath||'tinner module';},
+ paletteLabel:'tinner project module'
+});
 </script>
 <script type="text/html" data-template-name="tinner">
  <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
@@ -40,3 +47,12 @@ RED.nodes.registerType('tinner-join',{
 <script type="text/html" data-help-name="tinner"><p>Split a source text into <=2000-line code nodes and create an importable Node-RED flow.</p></script>
 <script type="text/html" data-help-name="tinner-chunk"><p>Text-preserving code node; does not run arbitrary source code.</p></script>
 <script type="text/html" data-help-name="tinner-join"><p>Reassembles and verifies exact source text with SHA-256.</p></script>
+
+<script type="text/html" data-template-name="tinner-project-module">
+ <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
+ <div class="form-row"><label for="node-input-relativePath">Project path</label><input type="text" id="node-input-relativePath" readonly></div>
+ <div class="form-row"><label for="node-input-kind">Kind</label><input type="text" id="node-input-kind" readonly></div>
+ <div class="form-row"><label for="node-input-sha256">SHA-256</label><input type="text" id="node-input-sha256" readonly></div>
+ <div class="form-row"><label for="node-input-dependencyList">Dependencies</label><textarea id="node-input-dependencyList" rows="7" readonly style="width:100%;font-family:monospace"></textarea></div>
+</script>
+<script type="text/html" data-help-name="tinner-project-module"><p>Static Godot project dependency metadata. Connection wires visualize file references, but are deliberately inert. This node never executes or forwards code.</p></script>
