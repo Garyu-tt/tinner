@@ -143,8 +143,8 @@ test('CLI status and rollback operate without a Godot process or external servic
 test('watch mode notices a change without needing an LLM or further commands',async()=>{
   const f=fixture();
   let stop=()=>{};
+  let ready=()=>{};
   try {
-    let ready;
     const observed=new Promise((resolve,reject)=>{
       let updates=0;
       const timeout=setTimeout(()=>reject(new Error('watch did not detect the change')),2800);
