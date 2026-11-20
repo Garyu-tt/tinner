@@ -127,3 +127,23 @@ test('Palette symbol nodes are inert even for cyclic reference graph',()=>{
   assert.equal(transmitted,0);
   assert.equal(done,1);
 });
+
+test('Repeated Godot exports generate byte-identical graph and manifest artifacts',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tinner-repeat-'));
+  try {
+    const src=path.join(root,'same-project');
+    fs.mkdirSync(src);
+    fs.writeFileSync(path.join(src,'project.godot'),'[application]\nconfig/name="stable"\n');
+    fs.writeFileSync(path.join(src,'main.gd'),'extends Node\nfunc one(n: int) -> int:\n    return two(n)\nfunc two(n: int) -> int:\n    return n+2\n');
+    const b1=path.join(root,'a'),b2=path.join(root,'b');
+    const left=exportProject(src,b1),right=exportProject(src,b2);
+    assert.equal(left.manifest.projectNamespace,right.manifest.projectNamespace);
+    const generated=['project-manifest.json','project-flow.json','symbol-graph.json',
+      'flows/main.gd.json','flows/symbols/main.gd.json'];
+    for (const rel of generated) {
+      assert.deepEqual(fs.readFileSync(path.join(b1,rel)),fs.readFileSync(path.join(b2,rel)),rel);
+    }
+    assert.equal(verifyProject(b1).verified,2);
+    assert.equal(verifyProject(b2).verified,2);
+  } finally {fs.rmSync(root,{recursive:true,force:true});}
+});
