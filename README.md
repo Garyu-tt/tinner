@@ -1,5 +1,29 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v0.6: Tinner Live — unattended graph revisions (no AI)
+
+Run on a trusted local workstation, **outside** the source tree:
+
+```sh
+# Export initial revision or update an existing Tinner Live directory:
+tinner live-scan ./godot-game ./tinner-live
+# Then repeatedly check for changes and publish validated revisions:
+tinner live-watch ./godot-game ./tinner-live 15000
+# From a second shell:
+tinner live-status ./tinner-live
+tinner live-rollback ./tinner-live
+tinner live-resume ./tinner-live
+```
+
+- The state directory is **new or already initialized by Tinner Live**, and is pinned to the canonical input directory. No source file is modified.
+- It contains `state.json` plus `revisions/rev-.../` (complete, immutable Godot bundles) and an atomically published `current.json` pointer. All graph files are only *metadata*, never executable code.
+- The watcher polls portable file metadata (path, size, mtime, ctime, inode and device) and skips when unchanged. When a change is detected, it creates a **full** fresh bundle, verifies source/chunk/generated-graph checksums, checks that source metadata stayed stable while building, and only then publishes the new pointer. A failed candidate never replaces the current revision; errors are reported and retried on the next poll.
+- If you roll back, the prior verified revision becomes active and updates are **paused** until `live-resume` is explicitly invoked. Restarting the watcher will not cancel that pause.
+- Live mode does **not** update executing Adamantium-node flows, deploy Godot projects, compile C++, run the Godot engine, or call any neural network or remote API.
+- **Resource caveat:** each changed revision currently reprocesses the **whole** project and retains prior full bundles without automatic pruning. It is *change-triggered*, **not yet a true per-file incremental compiler**. Large Godot Engine checkouts may require considerable disk, CPU, and time. Use a small project first.
+- Metadata-based monitoring is fast but does not detect a deliberately spoofed change preserving size, mtime, ctime and inode. Explicit source-integrity verification and true content-hash incremental caching are future improvements.
+- Node-RED editor registration is still installation-dependent: v0.6's watcher is a local CLI process, not a verified MAS background job. Run it with an operator-owned process supervisor if persistence across reboots is needed.
+
 Tinner is a small, **AI-free** Node-RED / [Adamantium-node](https://github.com/Garyu-tt/adamantium-node) plugin and CLI. It converts a Godot **project folder** into source chunks (at most 2,000 lines apiece), an importable static file-reference graph, and a checksum-verifiable archive. The input project or Godot engine source tree is never changed.
 
 ## v0.4: Godot game projects **and Godot Engine source** (no model / API calls)
