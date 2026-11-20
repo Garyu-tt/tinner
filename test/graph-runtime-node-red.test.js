@@ -127,7 +127,7 @@ test('untrusted graph source and mismatched built-in ABI cannot register handler
   await r.dispatch({action:'stage',graph:ref});
   await r.dispatch({action:'activate',revision:'r1',expectedActive:null});
   await assert.rejects(()=>r.dispatch({action:'invoke',route:'container/worker'},1),
-    /Reference node is not executable/);
+    /Reference node is not executable|not publicly exported/);
 });
 
 test('default CAS protects live revision and breaking public contracts are disabled',async()=>{
