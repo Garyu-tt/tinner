@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-tinner",
-  "version": "0.4.0",
-  "description": "AI-free deterministic Godot game / engine source tree -> Adamantium-node graph + lossless archive",
+  "version": "0.5.0",
+  "description": "AI-free Godot source decomposition, verified restore, and typed static symbol graph for Adamantium-node",
   "license": "UNLICENSED",
   "main": "lib/tinner.js",
   "bin": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check lib/gdscript.js && node --check lib/project.js && node --check nodes/tinner.js && node --check bin/tinner.js"
+    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check lib/gdscript.js && node --check lib/project.js && node --check nodes/tinner.js && node --check bin/tinner.js && node --check lib/symbols.js"
   },
   "engines": {
     "node": ">=18"
