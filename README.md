@@ -1,5 +1,45 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v1.0 — separate Godot game smoke and Engine C++ build acceptance
+
+Tinner can validate either kind of Godot source **before publishing** a new live graph revision, without a model/API call. Both validators are explicitly opt-in and run a verified, independently restored copy in a disposable Docker container, never the original source. Docker is not sufficient isolation for hostile code; use a dedicated, low-privilege host or VM for untrusted projects.
+
+### Godot game: import plus explicit headless smoke scene
+
+The game validator now runs Godot's editor `--import` stage and, optionally, a second headless process to execute a user-selected `.tscn` for up to 120 frames. A nonzero exit, timeout, or recognized error output at either stage blocks promotion.
+
+```sh
+# Choose a trusted, already present Godot 4 editor image:
+tinner project-validate ./game-bundle   --validate-image=my-godot-editor:4.x   --smoke-scene=res://tests/smoke.tscn
+
+# Unattended, content-hash change detection and verified revision publication:
+tinner live-watch ./godot-game ./live 15000 3   --validate-image=my-godot-editor:4.x   --smoke-scene=res://tests/smoke.tscn
+```
+
+The scene must exist **inside the archived project**. An arbitrary path, traversal or missing scene is rejected before launching Docker. Scene execution may run game scripts, so it uses the same offline/no-new-privileges container restrictions as import validation. Exit code 0 only proves this short smoke check completed without the recognized Godot error diagnostics, not that gameplay or all tests are correct.
+
+### Godot Engine: compile Linux editor from full C++ checkout
+
+Use a **trusted preinstalled** Docker builder image with SCons, C/C++ compilers and all Godot 4 Linux build dependencies. Tinner restores the engine source into a temporary writable workspace, then runs:
+
+```text
+scons -Q -j2 platform=linuxbsd target=editor
+```
+
+The build container has no network or added Linux capabilities, a read-only root filesystem, 2 CPU, an 8 GiB RAM limit and a 60 minute default timeout. A successful **zero exit code is not enough**: Tinner also requires a nonempty `bin/godot.linuxbsd.editor.*` output and hashes the binary. The output is discarded with the temporary workspace after validation; this is an **acceptance gate**, not a compiled-binary release exporter.
+
+```sh
+tinner project-engine-validate ./engine-bundle   --engine-build-image=my-godot-scons-builder:4.x --build-jobs=2
+
+tinner live-watch ./godot-engine ./engine-live 60000 3   --engine-build-image=my-godot-scons-builder:4.x --build-jobs=2
+```
+
+A failed build or missing binary leaves the previous graph revision active. Changing the validation mode or builder image requires a fresh accepted revision, even if source files are unchanged. Game-validator and Engine-validator modes cannot be enabled together.
+
+**Limits:** only Godot 4 **Linux editor** (`platform=linuxbsd target=editor`) is supported here. No Windows/macOS build, gameplay equivalence, C#/.NET assembly build, export template or native code-to-node transpilation is claimed. Large checkouts still cost disk/CPU despite incremental graph reuse. The CI tests the command construction, resource restrictions, refusal paths, mock binary verification and rejection of failed scene/build steps with injected subprocess mocks. It **does not invoke Docker or compile a real Godot checkout**; do not assume actual platform build success without running it on the target machine.
+
+Official references: Godot stable [Linux compilation instructions](https://docs.godotengine.org/en/stable/engine_details/development/compiling/compiling_for_linuxbsd.html) and [headless/scene command line options](https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html).
+
 ## v0.9 — opt-in Godot acceptance gate (Docker, no AI)
 
 **Why opt-in?** A Godot Editor import can execute editor extensions and tool scripts. Running it directly on the host against an untrusted project is unsafe. Tinner now validates the **verified, restored project copy** in a disposable Docker container, never the original Godot source.
