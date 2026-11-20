@@ -1,0 +1,40 @@
+<script type="text/javascript">
+RED.nodes.registerType('tinner',{
+ category:'function',defaults:{
+  name:{value:''},
+  maxLines:{value:2000,required:true,validate:function(v){return /^\d+$/.test(String(v))&&Number(v)>=1&&Number(v)<=2000;}}
+ },inputs:1,outputs:1,icon:'font-awesome/fa-scissors',
+ label:function(){return this.name||'tinner split';},paletteLabel:'tinner split'
+});
+RED.nodes.registerType('tinner-chunk',{
+ category:'function',defaults:{
+  name:{value:''},partId:{value:'part-0001',required:true},
+  index:{value:0,required:true},source:{value:''}
+ },inputs:1,outputs:1,icon:'font-awesome/fa-file-code-o',
+ label:function(){return this.name||this.partId||'tinner code';},paletteLabel:'tinner code'
+});
+RED.nodes.registerType('tinner-join',{
+ category:'function',defaults:{name:{value:''},manifest:{value:'',required:true}},
+ inputs:1,outputs:1,icon:'font-awesome/fa-check-circle',
+ label:function(){return this.name||'tinner verify';},paletteLabel:'tinner verify'
+});
+</script>
+<script type="text/html" data-template-name="tinner">
+ <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
+ <div class="form-row"><label for="node-input-maxLines">Max lines</label><input type="number" min="1" max="2000" id="node-input-maxLines"></div>
+ <p>Input: UTF-8 source string in <code>msg.payload</code>. Output: <code>msg.payload.flow</code> and manifest.</p>
+</script>
+<script type="text/html" data-template-name="tinner-chunk">
+ <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
+ <div class="form-row"><label for="node-input-partId">Part ID</label><input type="text" id="node-input-partId"></div>
+ <div class="form-row"><label for="node-input-index">Index</label><input type="number" id="node-input-index" min="0"></div>
+ <div class="form-row"><label for="node-input-source">Source</label><textarea id="node-input-source" rows="16" style="width:100%;font-family:monospace"></textarea></div>
+ <p>Source text is stored as data, not executed.</p>
+</script>
+<script type="text/html" data-template-name="tinner-join">
+ <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
+ <div class="form-row"><label for="node-input-manifest">Manifest</label><textarea id="node-input-manifest" rows="12" style="width:100%;font-family:monospace"></textarea></div>
+</script>
+<script type="text/html" data-help-name="tinner"><p>Split a source text into <=2000-line code nodes and create an importable Node-RED flow.</p></script>
+<script type="text/html" data-help-name="tinner-chunk"><p>Text-preserving code node; does not run arbitrary source code.</p></script>
+<script type="text/html" data-help-name="tinner-join"><p>Reassembles and verifies exact source text with SHA-256.</p></script>
