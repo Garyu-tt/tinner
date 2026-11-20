@@ -1,5 +1,28 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v0.8 — content-addressed change detection and bounded revision retention
+
+Tinner Live now **streams SHA-256 over every source file** on each polling pass. Changes are decided from file-content hashes, not file size, modification time or inode. Metadata snapshots remain available for detecting source races during a rebuild. A file whose timestamp changes but content is identical no longer triggers an unnecessary graph revision. Previously created v0.7 live states are supported: on the first scan the prior verified project manifest supplies missing hashes.
+
+When a new revision is produced, its candidate archive is still independently verified, and its source-file checksums must agree with the *beginning and end* of that scan before the active pointer can change. On a scan failure, the last active revision stays unchanged.
+
+Unattended update with **optional** archive retention:
+
+```sh
+# poll every 15 s, retain up to 3 revision bundles (always keep current + previous)
+tinner live-watch ./godot-game ./tinner-live 15000 3
+
+# See deletion candidates without deleting anything
+tinner live-prune ./tinner-live 3
+
+# Explicitly apply deletion after inspecting the dry-run
+tinner live-prune ./tinner-live 3 --apply
+```
+
+The `max-revisions` parameter is *opt-in*. Without it, the watcher retains every revision. With it, the watcher validates all deletion candidates before removing old Tinner-managed revision folders. The active and directly previous revisions are **never** removed. A bad archive or an active writer lock fails closed; a post-publication retention error is reported separately and never re-labels a successfully published revision as failed. No input Godot source file is ever deleted by the retention operation.
+
+**Performance caveat:** secure content detection scans each project's entire byte volume every poll. This may be costly for a full Godot Engine tree or slow HDD. Use a longer polling interval and opt in to pruning only after checking disk budget. Even in v0.8, whole-revision checks and graph rebuilding remain; only unchanged per-file source transformations are reused. The flow graphs remain inert and no Godot execution/compiler validation or runtime hot swap is claimed.
+
 ## v0.7: Verified per-file reuse across live revisions
 
 The same `live-scan` and `live-watch` commands now reprocess **only files whose filesystem metadata changed**. Unchanged text chunks, source-slice flows, static symbol indexes and binary assets are copied from the previous checksum-verified revision. Where the filesystem supports it, copy-on-write clones minimize physical storage for unchanged data; otherwise ordinary copies are made.
@@ -10,7 +33,7 @@ The revision's `project-manifest.json` records `incremental.reusedFiles`, `incre
 
 A **fail-closed filesystem writer lock** prevents two concurrent scanners or a rollback racing to publish. In the event of a crashed owner, a stale `.writer.lock` requires explicit operator inspection and removal; it is never silently stolen.
 
-**Current limits:** file metadata, not a content hash, determines which source files are changed. Source files deliberately edited while preserving size/mtime/ctime/inode could bypass detection. The source-stability gate likewise uses metadata snapshots. The project graph and archive checksum verification are still whole-revision operations, so large Godot Engine checkouts remain CPU/disk intensive. Old bundles are retained without automatic garbage collection; this is **per-file processing reuse**, not an incremental Godot compiler. The CLI does not run Godot/C++ code or hot-swap live flows.
+**Historical v0.7 limitation (fixed in v0.8):** file metadata, not a content hash, previously determined changes. Source files deliberately edited while preserving size/mtime/ctime/inode could bypass detection. The v0.8 source-stability gate checks both metadata and content hashes. The project graph and archive checksum verification are still whole-revision operations, so large Godot Engine checkouts remain CPU/disk intensive. Old bundles are retained unless v0.8 retention is explicitly enabled; this is **per-file processing reuse**, not an incremental Godot compiler. The CLI does not run Godot/C++ code or hot-swap live flows.
 
 ## v0.6: Tinner Live — unattended graph revisions (no AI)
 
@@ -33,7 +56,7 @@ tinner live-resume ./tinner-live
 - If you roll back, the prior verified revision becomes active and updates are **paused** until `live-resume` is explicitly invoked. Restarting the watcher will not cancel that pause.
 - Live mode does **not** update executing Adamantium-node flows, deploy Godot projects, compile C++, run the Godot engine, or call any neural network or remote API.
 - **Resource caveat:** each revision still verifies the **complete** project and retains prior full bundles without automatic pruning. Unchanged sources are reused, but graph-level metadata and dependency relationships are regenerated. Large Godot Engine checkouts may require considerable disk, CPU, and time. Use a small project first.
-- Metadata-based monitoring is fast but does not detect a deliberately spoofed change preserving size, mtime, ctime and inode. Explicit source-integrity verification and true content-hash incremental caching are future improvements.
+- In v0.8, each polling pass computes SHA-256 over the source tree. This is more reliable than timestamp checks but costs disk I/O.
 - Node-RED editor registration is still installation-dependent: v0.6's watcher is a local CLI process, not a verified MAS background job. Run it with an operator-owned process supervisor if persistence across reboots is needed.
 
 Tinner is a small, **AI-free** Node-RED / [Adamantium-node](https://github.com/Garyu-tt/adamantium-node) plugin and CLI. It converts a Godot **project folder** into source chunks (at most 2,000 lines apiece), an importable static file-reference graph, and a checksum-verifiable archive. The input project or Godot engine source tree is never changed.
