@@ -1,5 +1,33 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v0.9 — opt-in Godot acceptance gate (Docker, no AI)
+
+**Why opt-in?** A Godot Editor import can execute editor extensions and tool scripts. Running it directly on the host against an untrusted project is unsafe. Tinner now validates the **verified, restored project copy** in a disposable Docker container, never the original Godot source.
+
+Requirements: Docker installed and authorized; a **locally downloaded, operator-trusted** container image with a `godot` executable on its PATH (Godot 4 editor binary; image must be selected explicitly). For example, if you've already installed your own trusted `my-godot-validator:4.x` image:
+
+```sh
+# Standalone check of a previously exported bundle:
+tinner project-validate ./godot-graph --validate-image=my-godot-validator:4.x
+
+# Each new live revision is checked BEFORE current.json is promoted:
+tinner live-watch ./godot ./tinner-live 15000 3 --validate-image=my-godot-validator:4.x
+
+# Or one manual poll:
+tinner live-scan ./godot ./tinner-live 2000 3 --validate-image=my-godot-validator:4.x
+```
+
+The validation runner:
+- Verifies archive hashes, restores a separate temporary project and invokes `docker run --rm` with `--headless --path /workspace/project --import`. This is the Godot editor's headless import operation, **not** a complete test suite, gameplay check or a compiled C++ Godot Engine build.
+- Uses `--pull=never`, no network, a read-only container rootfs, no Linux capabilities, no new privileges, CPU/memory/PID limits, and only a disposable project-directory bind mount. No original source directory, Docker socket or user secrets are mounted.
+- Enforces a 90-second default timeout and fails on nonzero exit or recognized `ERROR:`/`SCRIPT ERROR:` diagnostics. The process exit code and bounded logs are written as `last-validation.json` in the live state directory for inspection.
+- Leaves the previous published revision untouched when Godot validation rejects a candidate. Running with an image for the first time forces a new checked revision even if files are unchanged. If Docker or Godot is absent, **verification fails closed rather than silently passing**.
+- Rejects validation of Godot Engine C++ source tree: this mode needs an independent compiler-backed pipeline, not editor import.
+
+**Security and evidence:** Docker reduces exposure but is not a hardened sandbox for arbitrary hostile code; use a dedicated, minimally privileged runner for untrusted projects. Images are not downloaded automatically. The isolated command is **not run by repository CI**: unit tests use an injected fake subprocess runner to verify gating and Docker command construction; actual Godot binary compatibility remains to be tested on a provisioned machine. Don't describe v0.9 as tested with a real Godot executable yet.
+
+By default no external engine is invoked: the watcher remains purely deterministic and AI-free, with opt-in validation controlled by CLI arguments.
+
 ## v0.8 — content-addressed change detection and bounded revision retention
 
 Tinner Live now **streams SHA-256 over every source file** on each polling pass. Changes are decided from file-content hashes, not file size, modification time or inode. Metadata snapshots remain available for detecting source races during a rebuild. A file whose timestamp changes but content is identical no longer triggers an unnecessary graph revision. Previously created v0.7 live states are supported: on the first scan the prior verified project manifest supplies missing hashes.
