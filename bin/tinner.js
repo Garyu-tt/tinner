@@ -4,8 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {splitSource,joinSource,buildFlow}=require('../lib/tinner');
 const {exportProject,verifyProject,restoreProject}=require('../lib/project');
-const {scanProject,liveStatus,rollbackProject,resumeProject,watchProject}=require('../lib/live');
-const [cmd,input,output,max]=process.argv.slice(2);
+const {scanProject,liveStatus,rollbackProject,resumeProject,watchProject,pruneRevisions}=require('../lib/live');
+const [cmd,input,output,max,retention]=process.argv.slice(2);
 function load(dir) {
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));
   const parts=manifest.chunks.map((chunk,index)=>{
@@ -17,16 +17,25 @@ function load(dir) {
 }
 try {
   if (cmd==='live-scan' && input && output) {
-    const result=scanProject(input,output,{maxLines:max===undefined?2000:Number(max)});
+    const result=scanProject(input,output,{
+      maxLines:max===undefined?2000:Number(max),
+      ...(retention===undefined?{}:{maxRevisions:Number(retention)})
+    });
     console.log(JSON.stringify(result,null,2));
   } else if (cmd==='live-watch' && input && output) {
     const ms=max===undefined?15000:Number(max);
-    const stop=watchProject(input,output,{pollMs:ms,onEvent:event=>{
+    const stop=watchProject(input,output,{
+      pollMs:ms,
+      ...(retention===undefined?{}:{maxRevisions:Number(retention)}),
+      onEvent:event=>{
       if(event.status==='unchanged')return;
       console.log(JSON.stringify(event));
     }});
     process.once('SIGINT',()=>{stop();process.exitCode=0;});
     process.once('SIGTERM',()=>{stop();process.exitCode=0;});
+  } else if (cmd==='live-prune' && input && output) {
+    if(max!==undefined && max!=='--apply')throw new Error('Only --apply is supported as a prune modifier');
+    console.log(JSON.stringify(pruneRevisions(input,Number(output),{apply:max==='--apply'}),null,2));
   } else if (cmd==='live-status' && input && !output) {
     console.log(JSON.stringify(liveStatus(input,{verify:true}),null,2));
   } else if (cmd==='live-rollback' && input && !output) {
@@ -58,7 +67,7 @@ try {
     fs.writeFileSync(output,load(input),{flag:'wx'});
     console.log('Restored '+output);
   } else {
-    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>\n  tinner project <godot-project-dir> <new-bundle-dir> [max-lines=2000]\n  tinner project-verify <bundle-dir>\n  tinner project-restore <bundle-dir> <new-godot-dir>\n  tinner live-scan <godot-source> <new-or-managed-state-dir> [max-lines=2000]\n  tinner live-watch <godot-source> <new-or-managed-state-dir> [poll-ms=15000]\n  tinner live-status <managed-state-dir>\n  tinner live-rollback <managed-state-dir>\n  tinner live-resume <managed-state-dir>');
+    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>\n  tinner project <godot-project-dir> <new-bundle-dir> [max-lines=2000]\n  tinner project-verify <bundle-dir>\n  tinner project-restore <bundle-dir> <new-godot-dir>\n  tinner live-scan <godot-source> <new-or-managed-state-dir> [max-lines=2000] [max-revisions]\n  tinner live-watch <godot-source> <new-or-managed-state-dir> [poll-ms=15000] [max-revisions]\n  tinner live-status <managed-state-dir>\n  tinner live-rollback <managed-state-dir>\n  tinner live-resume <managed-state-dir>\n  tinner live-prune <managed-state-dir> <max-revisions> [--apply]');
     process.exitCode=2;
   }
 }catch(err){console.error('Tinner: '+err.message);process.exitCode=1;}
