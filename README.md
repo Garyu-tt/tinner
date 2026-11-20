@@ -62,13 +62,15 @@ JavaScript uses Acorn top-level statement boundaries; Godot GDScript uses the co
 
 ## v0.5: Static symbol and port graph, automatically generated
 
-An ordinary \`tinner project <source> <new-bundle>\` run now also writes:
+An ordinary `tinner project <source> <new-bundle>` run now also writes:
 
-- \`symbol-graph.json\`: a stable, inert index of recognized GDScript functions and narrow C/C++ definitions, with source ranges, parameter type hints, return type hints and possible same-file direct-call edges.
-- \`flows/symbols/<relative-source-path>.json\`: an importable Adamantium-node / Node-RED \`tinner-symbol\` node graph per source file. Its \`ports\` property describes typed metadata; the actual Node-RED node still has one standard input and output and deliberately never forwards messages.
-- \`project-manifest.json.generatedArtifacts\`: checksums covering the generated graph files. \`project-verify\` checks these as well as source chunks and binary assets.
+- `symbol-graph.json`: a stable, inert index of recognized GDScript functions and narrow C/C++ definitions, with source ranges, parameter type hints, return type hints and possible same-file direct-call edges.
+- `flows/symbols/<relative-source-path>.json`: an importable Adamantium-node / Node-RED `tinner-symbol` node graph per source file. Its `ports` property describes typed metadata; the actual Node-RED node still has one standard input and output and deliberately never forwards messages.
+- `project-manifest.json.generatedArtifacts`: checksums covering the generated graph files. `project-verify` checks these as well as source chunks and binary assets.
 
-All indexing is **local and deterministic**: no LLM, model provider, network connection or project-code execution. The Godot project is never rewritten. Static extraction is incomplete by design: GDScript supports a subset of declaration syntax; C++ indexing recognizes a conservative subset of ordinary function definitions, not templates/macros/full C++ grammar. Edges are only **possible** direct same-file calls and carry \`confidence: "heuristic"\`; missing or ambiguous relationships are deliberately omitted. Types are hints, not proven signatures and **not runnable ports**. Unsupported features stay visible as absent metadata instead of being invented.
+Generated graph IDs and JSON are reproducible across repeated exports of an unchanged project, scoped to a project namespace (mode and source-folder name by default). If two different projects share that same namespace, import their graphs separately to avoid node-ID collisions. The library API supports an explicit namespace override.
+
+All indexing is **local and deterministic**: no LLM, model provider, network connection or project-code execution. The Godot project is never rewritten. Static extraction is incomplete by design: GDScript supports a subset of declaration syntax; C++ indexing recognizes a conservative subset of ordinary function definitions, not templates/macros/full C++ grammar. Edges are only **possible** direct same-file calls and carry `confidence: "heuristic"`; missing or ambiguous relationships are deliberately omitted. Types are hints, not proven signatures and **not runnable ports**. Unsupported features stay visible as absent metadata instead of being invented.
 
 For true runnable flow transformations, the future pipeline needs a real Godot/GDScript parser and a C++ compiler or AST-backed adapter, dependency injection/ABI mapping, a sandboxed test build, and explicit acceptance gates. Tinner v0.5 lays the inspectable structural groundwork, **not** a runnable Godot rewrite.
 
