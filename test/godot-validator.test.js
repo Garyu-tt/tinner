@@ -95,7 +95,7 @@ test('successful Godot verification gates publication and reports provenance',()
     assert.equal(current(f).settings.validateImage,'registry.example.local/godot:4.5');
     assert.equal(liveStatus(f.state,{verify:true}).verified,2);
     assert.equal(current(f).previous.revision,first.revision);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(f.state,'last-validation.json')).ok,true);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(f.state,'last-validation.json'),'utf8')).ok,true);
   }finally{clean(f);}
 });
 
