@@ -2,7 +2,8 @@
 RED.nodes.registerType('tinner',{
  category:'function',defaults:{
   name:{value:''},
-  maxLines:{value:2000,required:true,validate:function(v){return /^\d+$/.test(String(v))&&Number(v)>=1&&Number(v)<=2000;}}
+  maxLines:{value:2000,required:true,validate:function(v){return /^\d+$/.test(String(v))&&Number(v)>=1&&Number(v)<=2000;}},
+  semantic:{value:true}
  },inputs:1,outputs:1,icon:'font-awesome/fa-scissors',
  label:function(){return this.name||'tinner split';},paletteLabel:'tinner split'
 });
@@ -22,6 +23,7 @@ RED.nodes.registerType('tinner-join',{
 <script type="text/html" data-template-name="tinner">
  <div class="form-row"><label for="node-input-name">Name</label><input type="text" id="node-input-name"></div>
  <div class="form-row"><label for="node-input-maxLines">Max lines</label><input type="number" min="1" max="2000" id="node-input-maxLines"></div>
+ <div class="form-row"><label for="node-input-semantic">JS boundaries</label><input type="checkbox" id="node-input-semantic" style="width:auto;vertical-align:middle"><span> Prefer AST boundaries</span></div>
  <p>Input: UTF-8 source string in <code>msg.payload</code>. Output: <code>msg.payload.flow</code> and manifest.</p>
 </script>
 <script type="text/html" data-template-name="tinner-chunk">
