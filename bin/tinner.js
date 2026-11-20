@@ -3,6 +3,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const {splitSource,joinSource,buildFlow}=require('../lib/tinner');
+const {exportProject,verifyProject,restoreProject}=require('../lib/project');
 const [cmd,input,output,max]=process.argv.slice(2);
 function load(dir) {
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));
@@ -14,7 +15,16 @@ function load(dir) {
   return joinSource(manifest,parts);
 }
 try {
-  if(cmd==='split'&&input&&output) {
+  if(cmd==='project'&&input&&output) {
+    const result=exportProject(input,output,{maxLines:max===undefined?2000:max});
+    console.log('Godot project exported: '+result.manifest.files.length+' files; '+result.output);
+  } else if(cmd==='project-verify'&&input&&!output) {
+    const result=verifyProject(input);
+    console.log('Godot project verified: '+result.verified+' files');
+  } else if(cmd==='project-restore'&&input&&output) {
+    const result=restoreProject(input,output);
+    console.log('Godot project restored: '+result.restored+' files; '+result.output);
+  } else if(cmd==='split'&&input&&output) {
     const result=splitSource(fs.readFileSync(input,'utf8'),{filename:path.basename(input),maxLines:max===undefined?2000:max});
     fs.mkdirSync(output); // fail instead of overwriting an existing output folder
     const dir=path.join(output,'chunks');
@@ -30,7 +40,7 @@ try {
     fs.writeFileSync(output,load(input),{flag:'wx'});
     console.log('Restored '+output);
   } else {
-    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>');
+    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>\n  tinner project <godot-project-dir> <new-bundle-dir> [max-lines=2000]\n  tinner project-verify <bundle-dir>\n  tinner project-restore <bundle-dir> <new-godot-dir>');
     process.exitCode=2;
   }
 }catch(err){console.error('Tinner: '+err.message);process.exitCode=1;}
