@@ -17,3 +17,83 @@ jobs:
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npm run check
+
+  godot-real-smoke:
+    # Unlike Node unit tests, this job downloads an official engine binary,
+    # verifies its SHA-256, builds a local container and ACTUALLY runs Godot.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Fetch pinned official Godot 4.5.1 editor and create isolated image
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/godot-image"
+          mkdir -p "$base"
+          zip="$RUNNER_TEMP/Godot_v4.5.1-stable_linux.x86_64.zip"
+          curl -fL --retry 3 --retry-delay 3 --connect-timeout 20 \
+            'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip' -o "$zip"
+          echo '02ec53d1cc7dbb9cc6355393c61b9ab43d1244751a124f10248a4802830788cd  '"$zip" | sha256sum -c -
+          unzip -p "$zip" Godot_v4.5.1-stable_linux.x86_64 > "$base/godot"
+          chmod 0755 "$base/godot"
+          docker build --pull -t tinner-godot:4.5.1 -f .github/godot-ci/Dockerfile "$base"
+      - name: Real import and smoke execution through Tinner Live
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a test/fixtures/godot-smoke "$RUNNER_TEMP/game"
+          node bin/tinner.js live-scan "$RUNNER_TEMP/game" "$RUNNER_TEMP/tinner-live" 2000 2 \
+            --validate-image=tinner-godot:4.5.1 \
+            --smoke-scene=res://tests/smoke.tscn \
+            --smoke-marker=TINNER_SMOKE_PASSED > "$RUNNER_TEMP/tinner-live-result.json"
+          cp "$RUNNER_TEMP/tinner-live/last-validation.json" "$RUNNER_TEMP/godot-positive.json"
+          node -e '
+            const fs=require("fs");
+            const p=process.env.RUNNER_TEMP;
+            const status=JSON.parse(fs.readFileSync(p+"/tinner-live-result.json","utf8"));
+            const report=JSON.parse(fs.readFileSync(p+"/godot-positive.json","utf8"));
+            if(status.status!=="updated"||!status.validated||!report.ok||
+                report.smoke?.markerSeen!==true||
+                !report.smoke.stdout.includes("TINNER_SMOKE_PASSED"))
+              process.exit(1);
+            console.log("REAL_GODOT_4_5_1_SMOKE_ACCEPTED");
+          '
+      - name: Real parser error must not replace accepted revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/tinner-live/current.json" "$RUNNER_TEMP/current-before.json"
+          printf 'extends Node\nfunc broken(:\n' > "$RUNNER_TEMP/game/tests/smoke.gd"
+          if node bin/tinner.js live-scan "$RUNNER_TEMP/game" "$RUNNER_TEMP/tinner-live" 2000 2 \
+              --validate-image=tinner-godot:4.5.1 \
+              --smoke-scene=res://tests/smoke.tscn \
+              --smoke-marker=TINNER_SMOKE_PASSED; then
+            echo 'ERROR: broken Godot scene was accepted'
+            exit 1
+          fi
+          cp "$RUNNER_TEMP/tinner-live/last-validation.json" "$RUNNER_TEMP/godot-negative.json"
+          node -e '
+            const fs=require("fs"),p=process.env.RUNNER_TEMP;
+            const before=JSON.parse(fs.readFileSync(p+"/current-before.json","utf8"));
+            const after=JSON.parse(fs.readFileSync(p+"/tinner-live/current.json","utf8"));
+            const report=JSON.parse(fs.readFileSync(p+"/godot-negative.json","utf8"));
+            if(before.revision!==after.revision||report.ok)process.exit(1);
+            console.log("REAL_GODOT_4_5_1_BROKEN_SOURCE_REJECTED");
+          '
+      - name: Upload real validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-godot-4-5-1-smoke
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/tinner-live-result.json
+            ${{ runner.temp }}/godot-positive.json
+            ${{ runner.temp }}/godot-negative.json

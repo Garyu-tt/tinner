@@ -162,3 +162,55 @@ test('Docker launch errors and nonzero exits are rejected without publishing',()
     assert.equal(nonzero.exitCode,3);
   }finally{clean(f);}
 });
+
+
+test('required smoke marker prevents false success after a zero-exit scene that did not execute',()=>{
+  const f=fixture();
+  try {
+    fs.writeFileSync(path.join(f.source,'scripts','test.tscn'),'[gd_scene format=3]\n[node name="Test" type="Node"]\n');
+    exportProject(f.source,f.bundle);
+    let calls=0;
+    const result=validateGodotBundle(f.bundle,{
+      image:'local/godot:4.5',smokeScene:'res://scripts/test.tscn',
+      smokeMarker:'TINNER_SMOKE_PASSED',
+      runner:()=>({status:0,stdout:++calls===1?'editor imported':'scene exited cleanly',stderr:''})
+    });
+    assert.equal(calls,2);
+    assert.equal(result.ok,false);
+    assert.equal(result.smoke.markerSeen,false);
+    assert.equal(result.smoke.exitCode,0);
+  }finally{clean(f);}
+});
+
+test('required smoke marker accepts a scene only after positive proof of execution',()=>{
+  const f=fixture();
+  try {
+    fs.writeFileSync(path.join(f.source,'scripts','test.tscn'),'[gd_scene format=3]\n[node name="Test" type="Node"]\n');
+    exportProject(f.source,f.bundle);
+    let calls=0;
+    const result=validateGodotBundle(f.bundle,{
+      image:'local/godot:4.5',smokeScene:'res://scripts/test.tscn',
+      smokeMarker:'TINNER_SMOKE_PASSED',
+      runner:()=>({status:0,stdout:++calls===1?'editor imported':'TINNER_SMOKE_PASSED',stderr:''})
+    });
+    assert.equal(result.ok,true);
+    assert.equal(result.smoke.markerSeen,true);
+  }finally{clean(f);}
+});
+
+test('invalid smoke marker and marker without scene are rejected before launching Docker',()=>{
+  const f=fixture();
+  try {
+    exportProject(f.source,f.bundle);
+    for(const marker of ['','  ', 'anything\nbad','x'.repeat(129)]) {
+      assert.throws(()=>validateGodotBundle(f.bundle,{
+        image:'local/godot:4.5',smokeScene:'res://scripts/main.gd',
+        smokeMarker:marker,runner:()=>{throw Error('must not launch');}
+      }),/Smoke marker|Smoke scene/i);
+    }
+    assert.throws(()=>validateGodotBundle(f.bundle,{
+      image:'local/godot:4.5',smokeMarker:'PASS',
+      runner:()=>{throw Error('must not launch');}
+    }),/Smoke marker/);
+  }finally{clean(f);}
+});

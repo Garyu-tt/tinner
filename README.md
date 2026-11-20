@@ -1,5 +1,22 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v1.1 — real Godot 4.5.1 integration CI and smoke proof
+
+This release adds a **real engine** verification job on GitHub Actions for a repository-owned, minimal Godot 4.5.1 game fixture (no user or private project files). The CI runner retrieves the official `Godot_v4.5.1-stable_linux.x86_64.zip` editor, verifies the pinned SHA-256 `02ec53d1cc7dbb9cc6355393c61b9ab43d1244751a124f10248a4802830788cd`, builds a temporary local container, and invokes **the actual Tinner CLI** with Docker-isolated Godot import and scene smoke execution.
+
+The fixture's `_ready()` prints `TINNER_SMOKE_PASSED`. Tinner now supports `--smoke-marker=TOKEN`: if provided, that token **must be present in the smoke scene's stdout**. Merely exiting with status 0 is no longer enough. A second CI pass deliberately breaks GDScript syntax and checks that the live revision pointer is unchanged when real Godot rejects it. Validation JSON is preserved as an Actions artifact.
+
+Run the same acceptance check with your trusted local Godot 4 image:
+
+```sh
+tinner live-scan ./godot-game ./tinner-live 2000 3 \
+  --validate-image=my-godot-editor:4.x \
+  --smoke-scene=res://tests/smoke.tscn \
+  --smoke-marker=TINNER_SMOKE_PASSED
+```
+
+**Security and boundaries:** the real CI job downloads only the pinned public official Godot binary to a throwaway GitHub runner. The Docker validator itself always uses `--pull=never` and disables network. The fixture is owned by this repository; do not run arbitrary hostile projects on shared CI runners. This tests the **game** import and one short scene, not a real full Godot Engine **C++ compile**, GPU, exports, or the user's VM 122. The old SCons compile acceptance gate still uses mocked subprocesses in ordinary unit CI. No production node was altered.
+
 ## v1.0 — separate Godot game smoke and Engine C++ build acceptance
 
 Tinner can validate either kind of Godot source **before publishing** a new live graph revision, without a model/API call. Both validators are explicitly opt-in and run a verified, independently restored copy in a disposable Docker container, never the original source. Docker is not sufficient isolation for hostile code; use a dedicated, low-privilege host or VM for untrusted projects.
