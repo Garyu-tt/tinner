@@ -50,4 +50,10 @@ module.exports=function(RED) {
     this.on('input',(_msg,_send,done)=>{ if(done)done(); });
   }
   RED.nodes.registerType('tinner-project-module',ProjectModule);
+  function Symbol(config) {
+    RED.nodes.createNode(this,config);
+    // Static call graph only. Never execute source text or traverse wires on input.
+    this.on('input',(_msg,_send,done)=>{if(done)done();});
+  }
+  RED.nodes.registerType('tinner-symbol',Symbol);
 };
