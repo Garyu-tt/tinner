@@ -212,3 +212,37 @@ test('missing Node-RED auth cannot accidentally expose management HTTP routes',(
   assert.equal(installed.routes.size,0);
   assert.equal(typeof installed.registered.get('tinner-graph-runtime'),'function');
 });
+
+
+test('nested executable flow.chain calls only declared targets in deterministic order',async()=>{
+  const fs=require('node:fs');
+  const path=require('node:path');
+  const example=JSON.parse(fs.readFileSync(path.join(__dirname,'../examples/graph-runtime-chain.json'),'utf8'));
+  const runtime=new GraphRuntime({allowManagement:true});
+  const staged=await runtime.dispatch({action:'stage',graph:example});
+  assert.equal(staged.status,'staged');
+  await runtime.dispatch({action:'activate',revision:'example-r1',expectedActive:null});
+  const call=await runtime.dispatch({action:'invoke',route:'pipeline/sequence'},10);
+  assert.equal(call.value,26);
+  assert.equal(call.revision,'example-r1');
+  const bad=structuredClone(example);
+  bad.revision='no-edge';
+  bad.graphs[1].connections.pop();
+  await runtime.dispatch({action:'stage',graph:bad});
+  await runtime.dispatch({action:'activate',revision:'no-edge',expectedActive:'example-r1'});
+  await assert.rejects(()=>runtime.dispatch({action:'invoke',route:'pipeline/sequence'},10),
+    /Undeclared graph dependency/);
+});
+
+test('runtime stage limits graph bytes and does not evaluate arbitrary source',async()=>{
+  const runtime=new GraphRuntime({allowManagement:true});
+  const candidate=ir();
+  candidate.graphs[0].metadata='x'.repeat(4*1024*1024);
+  await assert.rejects(()=>runtime.dispatch({action:'stage',graph:candidate}),
+    /maximum accepted size/);
+  assert.equal(runtime.manager.status().active,null);
+  const forged=ir();
+  forged.definitions[0].id='mechanicus.javascript.eval';
+  await assert.rejects(()=>runtime.dispatch({action:'stage',graph:forged}),
+    /No approved built-in handler/);
+});
