@@ -6,7 +6,7 @@ module.exports=function(RED) {
     const node=this;
     node.on('input',(msg,send,done)=>{
       try {
-        const result=splitSource(msg.payload,{filename:msg.filename||'source.txt',maxLines:config.maxLines||2000});
+        const result=splitSource(msg.payload,{filename:msg.filename||'source.txt',maxLines:config.maxLines||2000,semantic:config.semantic!==false});
         msg.payload={manifest:result.manifest,flow:buildFlow(result)};
         send(msg); if(done)done();
       } catch(err) { if(done)done(err); else node.error(err,msg); }
