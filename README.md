@@ -1,5 +1,51 @@
 # Tinner — deterministic Adamantium-node project slicer
 
+## v1.3 — CPU-first native Graph Manager R01
+
+Tinner can now generate the first version of **mechanicus.universal-graph/1** directly from any accepted, checksum-verified Tinner Live revision. This format is **independent of Node-RED, Node.js runtime APIs, and file-system navigation semantics**: it is a JSON graph representation that a native/non-JS host can consume. The *reference implementation of the Graph Manager is currently a JavaScript library*, not a compiled native C++ or Rust runtime.
+
+```sh
+# Immutable, verified recursive directory/project graph (creates a NEW file):
+tinner graph-ir ./tinner-live ./universal-graph.json
+```
+
+The converter generates a **nested graph container for each directory**; a stable file node for each source; reusable *definition* objects for each file kind (separate from node instances); and cross-directory **metadata dependencies** resolved to stable node IDs. All file definitions are `kind: reference`, with no runnable source or code embedded in the IR. File dependency loops are allowed as metadata, but do not create executable connections. Filenames may change graph membership while unchanged file IDs remain stable across content-only revisions.
+
+### Trusted in-memory handler hot swap
+
+`lib/graph-manager.js` implements a separately instantiated GraphManager library. Hosts explicitly register vetted JavaScript handler functions in a Map keyed by `<definition.id>@<version>`. Graph JSON cannot create or execute handlers. Staging validates the graph tree, prevents recursive or shared child containers, checks typed named input/output ports (`number`, `string`, `boolean`, `json`, `bytes`, `any`), validates exported ports and declared in-graph edges, and refuses executable cycles.
+
+```js
+const { GraphManager, FORMAT } = require('./lib/graph-manager');
+const manager = new GraphManager();
+
+const ir = {
+  format: FORMAT,
+  namespace: 'demo', revision: 'r1', root: 'root',
+  definitions: [{
+    id: 'plus-one', version: 1, kind: 'handler',
+    inputs: [{name: 'input', type: 'number'}],
+    outputs: [{name: 'output', type: 'number'}]
+  }],
+  graphs: [{
+    id: 'root', inputs: [], outputs: [], connections: [],
+    nodes: [{id: 'counter', definition: 'plus-one@1'}]
+  }],
+  dependencies: [],
+  exports: [{path: 'counter', input: 'input', output: 'output'}]
+};
+
+manager.stage(ir, new Map([['plus-one@1', n => n+1]]));
+manager.activate('r1', {expectedActive: null});
+const value = await manager.invoke('counter', 41); // 42
+```
+
+For a new handler version, stage another revision with its own trusted handler Map, and call `activate('r2', {expectedActive: 'r1'})`. The activation changes one in-process pointer synchronously: **new calls see r2; already-running asynchronous calls keep r1** and finish without a process restart. `rollback({expectedActive:'r2'})` restores the previous pointer without restarting the host. Exports cannot disappear or change port types unless `allowBreaking:true` is explicitly provided. Execution is permitted only through validated, declared connections; no implicit cross-container execution or dynamic code evaluation.
+
+**Important distinctions:** this is **real version switching for trusted, separately injected in-process JavaScript functions** and a validated nested graph IR. It is **not** arbitrary hot-swapping of running Adamantium-node/Node-RED flows, Godot GDScript/C++ compilation, native IR execution, service deployment, distributed state transfer, or execution of the generated file-reference graph. Side effects of an in-flight function are not rolled back. There is no automatic state migration across handler versions, persistence of handler implementations, or cluster-wide atomic transaction. The Node-RED handoff remains an independent, explicitly approved API v2 operation.
+
+The CLI generates a standalone reproducible JSON graph from the **accepted** live revision, does not change the application's source, and refuses to overwrite an existing output file.
+
 ## v1.2 — acceptance-gated handoff to Adamantium-node / Node-RED API v2
 
 Tinner v1.2 reads a **published, checksum-verified** Tinner Live revision and safely prepares its *read-only file/dependency graph* for the official Node-RED API v2 (`Node-RED-API-Version: v2`). This uses the actual `GET /flows` and revision-guarded `POST /flows` routes verified in the Adamantium-node fork. It is NOT a native executable graph migration.
