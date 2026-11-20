@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-tinner",
-  "version": "0.2.0",
-  "description": "Lossless source slicer and code-node graph generator for Adamantium-node / Node-RED",
+  "version": "0.3.0",
+  "description": "Deterministic Godot project to Adamantium-node graph and lossless source chunk archive",
   "license": "UNLICENSED",
   "main": "lib/tinner.js",
   "bin": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check nodes/tinner.js && node --check bin/tinner.js"
+    "check": "node --check lib/tinner.js && node --check lib/semantic.js && node --check lib/gdscript.js && node --check lib/project.js && node --check nodes/tinner.js && node --check bin/tinner.js"
   },
   "engines": {
     "node": ">=18"
