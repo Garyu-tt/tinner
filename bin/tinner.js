@@ -25,7 +25,7 @@ const backupDir=readFlag('backup-dir');
 const known=new Set(['validate-image','engine-build-image','smoke-scene','smoke-marker','build-jobs','expect-rev','backup-dir']);
 const remaining=rawArgs.filter(value=>!([...known].some(name=>value.startsWith('--'+name+'='))));
 const doApply=remaining.includes('--apply');
-const [cmd,input,output,max,retention]=remaining.filter(value=>value!=='--apply');
+const [cmd,input,output,max,retention]=remaining;
 const checkOpts={
   ...(validateImage===undefined?{}:{validateImage}),
   ...(engineBuildImage===undefined?{}:{engineBuildImage}),
@@ -43,7 +43,7 @@ function load(dir) {
   return joinSource(manifest,parts);
 }
 try {
-  if (cmd==='handoff' && input && output && max===undefined) {
+  if (cmd==='handoff' && input && output && (max===undefined||max==='--apply') && retention===undefined) {
     handoff(input,output,{
       apply:doApply,expectRev,backupDir,token:process.env.TINNER_NODE_RED_TOKEN
     }).then(result=>{
