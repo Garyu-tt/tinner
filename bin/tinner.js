@@ -6,11 +6,27 @@ const {splitSource,joinSource,buildFlow}=require('../lib/tinner');
 const {exportProject,verifyProject,restoreProject}=require('../lib/project');
 const {scanProject,liveStatus,rollbackProject,resumeProject,watchProject,pruneRevisions}=require('../lib/live');
 const {validateGodotBundle}=require('../lib/godot-validator');
+const {validateEngineBundle}=require('../lib/godot-engine-validator');
 const rawArgs=process.argv.slice(2);
-const validateFlags=rawArgs.filter(value=>value.startsWith('--validate-image='));
-if(validateFlags.length>1)throw new Error('Only one validation image can be selected');
-const validateImage=validateFlags[0]?.slice('--validate-image='.length);
-const [cmd,input,output,max,retention]=rawArgs.filter(value=>!value.startsWith('--validate-image='));
+function readFlag(name) {
+  const values=rawArgs.filter(value=>value.startsWith('--'+name+'='));
+  if(values.length>1)throw new Error('Duplicate option --'+name);
+  return values[0]?.slice(name.length+3);
+}
+const validateImage=readFlag('validate-image');
+const engineBuildImage=readFlag('engine-build-image');
+const smokeScene=readFlag('smoke-scene');
+const jobsText=readFlag('build-jobs');
+const engineBuildJobs=jobsText===undefined?undefined:Number(jobsText);
+const known=new Set(['validate-image','engine-build-image','smoke-scene','build-jobs']);
+const remaining=rawArgs.filter(value=>!([...known].some(name=>value.startsWith('--'+name+'='))));
+const [cmd,input,output,max,retention]=remaining;
+const checkOpts={
+  ...(validateImage===undefined?{}:{validateImage}),
+  ...(engineBuildImage===undefined?{}:{engineBuildImage}),
+  ...(smokeScene===undefined?{}:{smokeScene}),
+  ...(engineBuildJobs===undefined?{}:{engineBuildJobs})
+};
 function load(dir) {
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));
   const parts=manifest.chunks.map((chunk,index)=>{
@@ -21,15 +37,19 @@ function load(dir) {
   return joinSource(manifest,parts);
 }
 try {
-  if (cmd==='project-validate' && input && !output && validateImage) {
-    const result=validateGodotBundle(input,{image:validateImage});
+  if (cmd==='project-engine-validate' && input && !output && engineBuildImage) {
+    const result=validateEngineBundle(input,{image:engineBuildImage,jobs:engineBuildJobs});
+    console.log(JSON.stringify(result,null,2));
+    if(!result.ok)process.exitCode=1;
+  } else if (cmd==='project-validate' && input && !output && validateImage) {
+    const result=validateGodotBundle(input,{image:validateImage,smokeScene});
     console.log(JSON.stringify(result,null,2));
     if(!result.ok)process.exitCode=1;
   } else if (cmd==='live-scan' && input && output) {
     const result=scanProject(input,output,{
       maxLines:max===undefined?2000:Number(max),
       ...(retention===undefined?{}:{maxRevisions:Number(retention)}),
-      ...(validateImage===undefined?{}:{validateImage})
+      ...checkOpts
     });
     console.log(JSON.stringify(result,null,2));
   } else if (cmd==='live-watch' && input && output) {
@@ -37,7 +57,7 @@ try {
     const stop=watchProject(input,output,{
       pollMs:ms,
       ...(retention===undefined?{}:{maxRevisions:Number(retention)}),
-      ...(validateImage===undefined?{}:{validateImage}),
+      ...checkOpts,
       onEvent:event=>{
       if(event.status==='unchanged')return;
       console.log(JSON.stringify(event));
@@ -78,7 +98,7 @@ try {
     fs.writeFileSync(output,load(input),{flag:'wx'});
     console.log('Restored '+output);
   } else {
-    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>\n  tinner project <godot-project-dir> <new-bundle-dir> [max-lines=2000]\n  tinner project-verify <bundle-dir>\n  tinner project-restore <bundle-dir> <new-godot-dir>\n  tinner live-scan <godot-source> <new-or-managed-state-dir> [max-lines=2000] [max-revisions] [--validate-image=LOCAL_DOCKER_IMAGE]\n  tinner live-watch <godot-source> <new-or-managed-state-dir> [poll-ms=15000] [max-revisions] [--validate-image=LOCAL_DOCKER_IMAGE]\n  tinner live-status <managed-state-dir>\n  tinner live-rollback <managed-state-dir>\n  tinner live-resume <managed-state-dir>\n  tinner live-prune <managed-state-dir> <max-revisions> [--apply]\n  tinner project-validate <bundle-dir> --validate-image=LOCAL_DOCKER_IMAGE');
+    console.log('Usage:\n  tinner split <source-file> <new-directory> [max-lines=2000]\n  tinner verify <directory>\n  tinner join <directory> <new-output-file>\n  tinner project <godot-project-dir> <new-bundle-dir> [max-lines=2000]\n  tinner project-verify <bundle-dir>\n  tinner project-restore <bundle-dir> <new-godot-dir>\n  tinner live-scan <godot-source> <new-or-managed-state-dir> [max-lines=2000] [max-revisions] [--validate-image=LOCAL_DOCKER_IMAGE]\n  tinner live-watch <godot-source> <new-or-managed-state-dir> [poll-ms=15000] [max-revisions] [--validate-image=LOCAL_DOCKER_IMAGE]\n  tinner live-status <managed-state-dir>\n  tinner live-rollback <managed-state-dir>\n  tinner live-resume <managed-state-dir>\n  tinner live-prune <managed-state-dir> <max-revisions> [--apply]\n  tinner project-validate <bundle-dir> --validate-image=LOCAL_DOCKER_IMAGE [--smoke-scene=res://tests/smoke.tscn]\n  tinner project-engine-validate <engine-bundle> --engine-build-image=LOCAL_BUILDER_IMAGE [--build-jobs=2]');
     process.exitCode=2;
   }
 }catch(err){console.error('Tinner: '+err.message);process.exitCode=1;}
